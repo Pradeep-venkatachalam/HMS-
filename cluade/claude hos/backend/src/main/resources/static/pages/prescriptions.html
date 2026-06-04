@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Prescriptions</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name"></div><div class="user-role" id="sidebar-user-role"></div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">💊 Prescriptions</div>
+      <button class="btn btn-primary" id="addBtn" onclick="openAdd()">+ New Prescription</button>
+    </header>
+    <main class="page-content">
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Diagnosis</th><th>Follow-up</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="rx-tbody">
+                <tr><td colspan="7" class="text-center text-muted" style="padding:40px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="rxModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">New Prescription</span>
+      <button class="modal-close" onclick="closeModal('rxModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rxId"/>
+      <div class="form-group">
+        <label class="form-label">Appointment *</label>
+        <select id="aptSelect" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Diagnosis</label>
+        <textarea id="diagnosis" class="form-control" rows="2" placeholder="Diagnosis details"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Medications *</label>
+        <textarea id="medications" class="form-control" rows="4" placeholder="e.g.&#10;1. Paracetamol 500mg – twice daily after food&#10;2. Cetirizine 10mg – once at bedtime"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Instructions</label>
+        <textarea id="instructions" class="form-control" rows="2" placeholder="e.g. Rest, drink plenty of water…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Follow-up Date</label>
+        <input type="date" id="followUpDate" class="form-control"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('rxModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="savePrescription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Prescription Details</span><button class="modal-close" onclick="closeModal('viewModal')">✕</button></div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('viewModal')">Close</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+
+if (!api.hasRole('ADMIN','DOCTOR')) {
+  document.getElementById('addBtn').style.display = 'none';
+}
+
+// Check if opened from appointments page with pre-filled appointmentId
+const urlParams = new URLSearchParams(window.location.search);
+const prefilledAptId = urlParams.get('appointmentId');
+
+async function loadAll() {
+  try {
+    const r = await api.getPrescriptions();
+    const rows = (r && r.data) ? r.data : [];
+    renderTable(rows);
+  } catch(e) { showToast('Failed to load prescriptions: '+e.message,'error'); }
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('rx-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💊</div><h3>No prescriptions found</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((rx,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${escHtml(rx.patientName)}</td>
+      <td>${escHtml(rx.doctorName)}</td>
+      <td>${formatDate(rx.appointmentDate)}</td>
+      <td>${rx.diagnosis ? escHtml(rx.diagnosis).substring(0,50)+'…' : '—'}</td>
+      <td>${rx.followUpDate ? formatDate(rx.followUpDate) : '—'}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn btn-outline btn-sm btn-icon" onclick="viewRx(${rx.id})" title="View">👁</button>
+          ${api.hasRole('ADMIN','DOCTOR') ? `<button class="btn btn-primary btn-sm btn-icon" onclick="openEdit(${rx.id})" title="Edit">✏️</button>` : ''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+async function loadAptSelect(selectedId) {
+  try {
+    const r = await api.getAppointments();
+    const apts = (r&&r.data)?r.data:[];
+    const completed = apts.filter(a => a.status==='COMPLETED' || a.status==='CONFIRMED' || a.status==='SCHEDULED');
+    document.getElementById('aptSelect').innerHTML =
+      '<option value="">Select Appointment</option>' +
+      completed.map(a => `<option value="${a.id}" ${a.id==selectedId?'selected':''}>
+        ${escHtml(a.patientName)} → ${escHtml(a.doctorName)} | ${formatDate(a.appointmentDate)} ${a.appointmentTime}
+      </option>`).join('');
+  } catch(e) {}
+}
+
+async function openAdd() {
+  document.getElementById('rxId').value = '';
+  document.getElementById('modalTitle').textContent = 'New Prescription';
+  ['diagnosis','medications','instructions','followUpDate'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  await loadAptSelect(prefilledAptId);
+  openModal('rxModal');
+}
+
+async function openEdit(id) {
+  try {
+    const r = await api.getPrescription(id);
+    if (!r||!r.data) return;
+    const rx = r.data;
+    await loadAptSelect(rx.appointmentId);
+    document.getElementById('rxId').value = rx.id;
+    document.getElementById('modalTitle').textContent = 'Edit Prescription';
+    document.getElementById('aptSelect').value   = rx.appointmentId;
+    document.getElementById('diagnosis').value   = rx.diagnosis||'';
+    document.getElementById('medications').value = rx.medications||'';
+    document.getElementById('instructions').value= rx.instructions||'';
+    document.getElementById('followUpDate').value= rx.followUpDate||'';
+    openModal('rxModal');
+  } catch(e) { showToast('Failed to load prescription','error'); }
+}
+
+async function savePrescription() {
+  const id = document.getElementById('rxId').value;
+  const data = {
+    appointmentId: parseInt(document.getElementById('aptSelect').value)||null,
+    diagnosis:     document.getElementById('diagnosis').value.trim(),
+    medications:   document.getElementById('medications').value.trim(),
+    instructions:  document.getElementById('instructions').value.trim(),
+    followUpDate:  document.getElementById('followUpDate').value||null,
+  };
+  if (!data.appointmentId || !data.medications) { showToast('Appointment and medications are required','warning'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    if (id) { await api.updatePrescription(id,data); showToast('Prescription updated','success'); }
+    else     { await api.createPrescription(data);   showToast('Prescription saved','success'); }
+    closeModal('rxModal');
+    loadAll();
+  } catch(e) { showToast(e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Save'; }
+}
+
+async function viewRx(id) {
+  try {
+    const r = await api.getPrescription(id);
+    if (!r||!r.data) return;
+    const rx = r.data;
+    document.getElementById('viewBody').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item"><label>Patient</label><span>${escHtml(rx.patientName)}</span></div>
+        <div class="detail-item"><label>Doctor</label><span>${escHtml(rx.doctorName)}</span></div>
+        <div class="detail-item"><label>Appointment Date</label><span>${formatDate(rx.appointmentDate)}</span></div>
+        <div class="detail-item"><label>Follow-up Date</label><span>${rx.followUpDate ? formatDate(rx.followUpDate) : '—'}</span></div>
+      </div>
+      ${rx.diagnosis ? `<div class="mt-2"><label class="form-label">Diagnosis</label><p>${escHtml(rx.diagnosis)}</p></div>` : ''}
+      <div class="mt-2"><label class="form-label">Medications</label>
+        <pre style="white-space:pre-wrap;font-family:inherit;background:#f5f5f5;padding:12px;border-radius:8px;font-size:14px">${escHtml(rx.medications)}</pre>
+      </div>
+      ${rx.instructions ? `<div class="mt-2"><label class="form-label">Instructions</label><p>${escHtml(rx.instructions)}</p></div>` : ''}`;
+    openModal('viewModal');
+  } catch(e) { showToast('Failed to load prescription','error'); }
+}
+
+loadAll();
+
+// Auto-open add modal if appointmentId is in URL
+if (prefilledAptId) {
+  window.addEventListener('load', () => setTimeout(openAdd, 300));
+}
+</script>
+</body>
+</html>

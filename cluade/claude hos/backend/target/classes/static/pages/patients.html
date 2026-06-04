@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Patients</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name"></div><div class="user-role" id="sidebar-user-role"></div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">👤 Patients</div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search patients…"/>
+      </div>
+      <button class="btn btn-primary" id="addBtn" data-roles="ADMIN,RECEPTIONIST" onclick="openAdd()">+ Add Patient</button>
+    </header>
+    <main class="page-content">
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Name</th><th>Gender</th><th>DOB</th><th>Blood</th>
+                  <th>Phone</th><th>Email</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="patients-tbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding:40px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="patientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Add Patient</span>
+      <button class="modal-close" onclick="closeModal('patientModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="patientId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name *</label>
+          <input type="text" id="firstName" class="form-control" placeholder="First name"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name *</label>
+          <input type="text" id="lastName" class="form-control" placeholder="Last name"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="pemail" class="form-control" placeholder="Email"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" id="phone" class="form-control" placeholder="Phone"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" id="dob" class="form-control"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select id="gender" class="form-control">
+            <option value="">Select</option>
+            <option>Male</option><option>Female</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Blood Group</label>
+          <select id="bloodGroup" class="form-control">
+            <option value="">Select</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Emergency Contact</label>
+          <input type="text" id="emergencyContact" class="form-control" placeholder="Name / Phone"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <textarea id="address" class="form-control" rows="2" placeholder="Full address"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Medical History</label>
+        <textarea id="medicalHistory" class="form-control" rows="2" placeholder="Past conditions, allergies…"></textarea>
+      </div>
+      <div id="loginSection">
+        <div class="divider"></div>
+        <p class="text-muted" style="margin-bottom:12px">Optional: create login credentials for patient portal</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" id="pusername" class="form-control" placeholder="Username"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" id="ppassword" class="form-control" placeholder="Password"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('patientModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="savePatient()">Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Patient Details</span>
+      <button class="modal-close" onclick="closeModal('viewModal')">✕</button>
+    </div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('viewModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+
+// Role-based button visibility
+const user = api.getUser();
+if (!api.hasRole('ADMIN','RECEPTIONIST')) {
+  document.getElementById('addBtn').style.display = 'none';
+}
+
+let allPatients = [];
+
+async function loadPatients() {
+  try {
+    const r = await api.getPatients();
+    allPatients = (r && r.data) ? r.data : [];
+    renderTable(allPatients);
+  } catch(e) {
+    showToast('Failed to load patients: ' + e.message, 'error');
+  }
+}
+
+function renderTable(patients) {
+  const tbody = document.getElementById('patients-tbody');
+  if (!patients.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👤</div><h3>No patients found</h3><p>Add a patient to get started</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = patients.map((p, i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${escHtml(p.fullName)}</strong></td>
+      <td>${escHtml(p.gender) || '—'}</td>
+      <td>${p.dateOfBirth ? formatDate(p.dateOfBirth) : '—'}</td>
+      <td>${p.bloodGroup ? `<span class="badge badge-confirmed">${p.bloodGroup}</span>` : '—'}</td>
+      <td>${escHtml(p.phone) || '—'}</td>
+      <td>${escHtml(p.email) || '—'}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn btn-outline btn-sm btn-icon" onclick="viewPatient(${p.id})" title="View">👁</button>
+          ${api.hasRole('ADMIN','RECEPTIONIST') ? `<button class="btn btn-primary btn-sm btn-icon" onclick="openEdit(${p.id})" title="Edit">✏️</button>` : ''}
+          ${api.hasRole('ADMIN') ? `<button class="btn btn-danger btn-sm btn-icon" onclick="deletePatient(${p.id})" title="Delete">🗑</button>` : ''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', async function() {
+  const q = this.value.trim();
+  if (!q) { renderTable(allPatients); return; }
+  try {
+    const r = await api.searchPatients(q);
+    renderTable((r && r.data) ? r.data : []);
+  } catch(e) {}
+});
+
+function openAdd() {
+  document.getElementById('patientId').value = '';
+  document.getElementById('modalTitle').textContent = 'Add Patient';
+  ['firstName','lastName','pemail','phone','dob','gender','bloodGroup','emergencyContact','address','medicalHistory','pusername','ppassword'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('loginSection').style.display = 'block';
+  openModal('patientModal');
+}
+
+async function openEdit(id) {
+  try {
+    const r = await api.getPatient(id);
+    if (!r || !r.data) return;
+    const p = r.data;
+    document.getElementById('patientId').value = p.id;
+    document.getElementById('modalTitle').textContent = 'Edit Patient';
+    document.getElementById('firstName').value = p.firstName || '';
+    document.getElementById('lastName').value  = p.lastName  || '';
+    document.getElementById('pemail').value    = p.email     || '';
+    document.getElementById('phone').value     = p.phone     || '';
+    document.getElementById('dob').value       = p.dateOfBirth || '';
+    document.getElementById('gender').value    = p.gender    || '';
+    document.getElementById('bloodGroup').value= p.bloodGroup|| '';
+    document.getElementById('emergencyContact').value = p.emergencyContact || '';
+    document.getElementById('address').value   = p.address   || '';
+    document.getElementById('medicalHistory').value = p.medicalHistory || '';
+    document.getElementById('loginSection').style.display = 'none';
+    openModal('patientModal');
+  } catch(e) { showToast('Failed to load patient', 'error'); }
+}
+
+async function savePatient() {
+  const id = document.getElementById('patientId').value;
+  const data = {
+    firstName: document.getElementById('firstName').value.trim(),
+    lastName:  document.getElementById('lastName').value.trim(),
+    email:     document.getElementById('pemail').value.trim(),
+    phone:     document.getElementById('phone').value.trim(),
+    dateOfBirth: document.getElementById('dob').value || null,
+    gender:    document.getElementById('gender').value,
+    bloodGroup:document.getElementById('bloodGroup').value,
+    emergencyContact: document.getElementById('emergencyContact').value.trim(),
+    address:   document.getElementById('address').value.trim(),
+    medicalHistory: document.getElementById('medicalHistory').value.trim(),
+  };
+  if (!id) {
+    data.username = document.getElementById('pusername').value.trim() || null;
+    data.password = document.getElementById('ppassword').value || null;
+  }
+  if (!data.firstName || !data.lastName) { showToast('First and last name are required','warning'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (id) {
+      await api.updatePatient(id, data);
+      showToast('Patient updated successfully','success');
+    } else {
+      await api.createPatient(data);
+      showToast('Patient added successfully','success');
+    }
+    closeModal('patientModal');
+    loadPatients();
+  } catch(e) { showToast(e.message,'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Patient'; }
+}
+
+async function viewPatient(id) {
+  try {
+    const r = await api.getPatient(id);
+    if (!r || !r.data) return;
+    const p = r.data;
+    document.getElementById('viewBody').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item"><label>Full Name</label><span>${escHtml(p.fullName)}</span></div>
+        <div class="detail-item"><label>Gender</label><span>${p.gender||'—'}</span></div>
+        <div class="detail-item"><label>Date of Birth</label><span>${p.dateOfBirth ? formatDate(p.dateOfBirth) : '—'}</span></div>
+        <div class="detail-item"><label>Blood Group</label><span>${p.bloodGroup||'—'}</span></div>
+        <div class="detail-item"><label>Email</label><span>${p.email||'—'}</span></div>
+        <div class="detail-item"><label>Phone</label><span>${p.phone||'—'}</span></div>
+        <div class="detail-item"><label>Emergency Contact</label><span>${p.emergencyContact||'—'}</span></div>
+        <div class="detail-item"><label>Registered</label><span>${p.createdAt ? formatDate(p.createdAt) : '—'}</span></div>
+      </div>
+      ${p.address ? `<div class="mt-2"><label class="form-label">Address</label><p>${escHtml(p.address)}</p></div>` : ''}
+      ${p.medicalHistory ? `<div class="mt-2"><label class="form-label">Medical History</label><p>${escHtml(p.medicalHistory)}</p></div>` : ''}`;
+    openModal('viewModal');
+  } catch(e) { showToast('Failed to load patient','error'); }
+}
+
+async function deletePatient(id) {
+  if (!confirm('Delete this patient? This cannot be undone.')) return;
+  try {
+    await api.deletePatient(id);
+    showToast('Patient deleted','success');
+    loadPatients();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+loadPatients();
+</script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Appointments</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name"></div><div class="user-role" id="sidebar-user-role"></div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">📅 Appointments</div>
+      <input type="date" id="dateFilter" class="form-control" style="width:180px"/>
+      <button class="btn btn-outline btn-sm" onclick="clearFilter()">All</button>
+      <button class="btn btn-primary" onclick="openAdd()">+ New Appointment</button>
+    </header>
+    <main class="page-content">
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Reason</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="apt-tbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding:40px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="aptModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">New Appointment</span>
+      <button class="modal-close" onclick="closeModal('aptModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="aptId"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Patient *</label>
+          <select id="patientSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Doctor *</label>
+          <select id="doctorSelect" class="form-control"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input type="date" id="aptDate" class="form-control"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time *</label>
+          <input type="time" id="aptTime" class="form-control"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason</label>
+        <textarea id="aptReason" class="form-control" rows="2" placeholder="Reason for visit"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="aptNotes" class="form-control" rows="2" placeholder="Additional notes"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('aptModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveAppointment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header"><span class="modal-title">Update Status</span><button class="modal-close" onclick="closeModal('statusModal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="statusAptId"/>
+      <div class="form-group">
+        <label class="form-label">New Status</label>
+        <select id="statusSelect" class="form-control">
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="CONFIRMED">Confirmed</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="NO_SHOW">No Show</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('statusModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmStatusUpdate()">Update</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+
+let appointments = [];
+
+async function loadAll() {
+  try {
+    const r = await api.getAppointments();
+    appointments = (r && r.data) ? r.data : [];
+    renderTable(appointments);
+  } catch(e) { showToast('Failed to load appointments: '+e.message,'error'); }
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('apt-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📅</div><h3>No appointments found</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((a,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${escHtml(a.patientName)}</td>
+      <td>${escHtml(a.doctorName)}</td>
+      <td>${formatDate(a.appointmentDate)}</td>
+      <td>${escHtml(a.appointmentTime)}</td>
+      <td>${badgeHtml(a.status)}</td>
+      <td>${escHtml(a.reason)||'—'}</td>
+      <td>
+        <div class="table-actions">
+          ${api.hasRole('ADMIN','DOCTOR','RECEPTIONIST') ? `<button class="btn btn-warning btn-sm btn-icon" onclick="openStatus(${a.id},'${a.status}')" title="Update Status">🔄</button>` : ''}
+          ${api.hasRole('ADMIN','RECEPTIONIST') ? `<button class="btn btn-primary btn-sm btn-icon" onclick="openEdit(${a.id})" title="Edit">✏️</button>` : ''}
+          ${!a.hasPrescription && api.hasRole('ADMIN','DOCTOR') ? `<button class="btn btn-success btn-sm" onclick="location.href='prescriptions.html?appointmentId=${a.id}'">💊 Rx</button>` : ''}
+          ${!a.hasBill && api.hasRole('ADMIN','RECEPTIONIST') ? `<button class="btn btn-outline btn-sm" onclick="location.href='billing.html?appointmentId=${a.id}'">💰 Bill</button>` : ''}
+          ${api.hasRole('ADMIN','RECEPTIONIST') ? `<button class="btn btn-danger btn-sm btn-icon" onclick="deleteApt(${a.id})" title="Delete">🗑</button>` : ''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+document.getElementById('dateFilter').addEventListener('change', async function() {
+  if (!this.value) { renderTable(appointments); return; }
+  try { const r = await api.getAppointmentsByDate(this.value); renderTable((r&&r.data)?r.data:[]); }
+  catch(e) { showToast(e.message,'error'); }
+});
+
+function clearFilter() {
+  document.getElementById('dateFilter').value = '';
+  renderTable(appointments);
+}
+
+async function loadSelects() {
+  try {
+    const [pr, dr] = await Promise.all([api.getPatients(), api.getDoctors()]);
+    const patients = (pr&&pr.data)?pr.data:[];
+    const doctors  = (dr&&dr.data)?dr.data:[];
+    document.getElementById('patientSelect').innerHTML = '<option value="">Select Patient</option>' +
+      patients.map(p => `<option value="${p.id}">${escHtml(p.fullName)}</option>`).join('');
+    document.getElementById('doctorSelect').innerHTML = '<option value="">Select Doctor</option>' +
+      doctors.filter(d=>d.active).map(d => `<option value="${d.id}">${escHtml(d.fullName)} – ${escHtml(d.specialization)}</option>`).join('');
+  } catch(e) {}
+}
+
+function openAdd() {
+  document.getElementById('aptId').value = '';
+  document.getElementById('modalTitle').textContent = 'New Appointment';
+  ['aptDate','aptTime','aptReason','aptNotes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('patientSelect').value = '';
+  document.getElementById('doctorSelect').value  = '';
+  loadSelects();
+  openModal('aptModal');
+}
+
+async function openEdit(id) {
+  try {
+    const r = await api.getAppointment(id);
+    if (!r||!r.data) return;
+    const a = r.data;
+    await loadSelects();
+    document.getElementById('aptId').value = a.id;
+    document.getElementById('modalTitle').textContent = 'Edit Appointment';
+    document.getElementById('patientSelect').value = a.patientId;
+    document.getElementById('doctorSelect').value  = a.doctorId;
+    document.getElementById('aptDate').value   = a.appointmentDate;
+    document.getElementById('aptTime').value   = a.appointmentTime;
+    document.getElementById('aptReason').value = a.reason||'';
+    document.getElementById('aptNotes').value  = a.notes||'';
+    openModal('aptModal');
+  } catch(e) { showToast('Failed to load appointment','error'); }
+}
+
+async function saveAppointment() {
+  const id = document.getElementById('aptId').value;
+  const data = {
+    patientId: parseInt(document.getElementById('patientSelect').value)||null,
+    doctorId:  parseInt(document.getElementById('doctorSelect').value)||null,
+    appointmentDate: document.getElementById('aptDate').value,
+    appointmentTime: document.getElementById('aptTime').value,
+    reason: document.getElementById('aptReason').value.trim(),
+    notes:  document.getElementById('aptNotes').value.trim(),
+  };
+  if (!data.patientId||!data.doctorId||!data.appointmentDate||!data.appointmentTime) {
+    showToast('Patient, doctor, date and time are required','warning'); return;
+  }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    if (id) { await api.updateAppointment(id,data); showToast('Appointment updated','success'); }
+    else     { await api.createAppointment(data);   showToast('Appointment created','success'); }
+    closeModal('aptModal');
+    loadAll();
+  } catch(e) { showToast(e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Save'; }
+}
+
+function openStatus(id, current) {
+  document.getElementById('statusAptId').value = id;
+  document.getElementById('statusSelect').value = current;
+  openModal('statusModal');
+}
+
+async function confirmStatusUpdate() {
+  const id = document.getElementById('statusAptId').value;
+  const status = document.getElementById('statusSelect').value;
+  try {
+    await api.updateAppointmentStatus(id, status);
+    showToast('Status updated','success');
+    closeModal('statusModal');
+    loadAll();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deleteApt(id) {
+  if (!confirm('Delete this appointment?')) return;
+  try { await api.deleteAppointment(id); showToast('Deleted','success'); loadAll(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Dashboard</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name">Admin</div><div class="user-role" id="sidebar-user-role">admin</div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </header>
+    <main class="page-content">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">👤</div><div class="stat-info"><div class="stat-value" id="s-patients">—</div><div class="stat-label">Total Patients</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">🩺</div><div class="stat-info"><div class="stat-value" id="s-doctors">—</div><div class="stat-label">Total Doctors</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📅</div><div class="stat-info"><div class="stat-value" id="s-appointments">—</div><div class="stat-label">Total Appointments</div></div></div>
+        <div class="stat-card"><div class="stat-icon teal">📆</div><div class="stat-info"><div class="stat-value" id="s-today">—</div><div class="stat-label">Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">⏳</div><div class="stat-info"><div class="stat-value" id="s-pending">—</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-value" id="s-completed">—</div><div class="stat-label">Completed</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">❌</div><div class="stat-info"><div class="stat-value" id="s-cancelled">—</div><div class="stat-label">Cancelled</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">💰</div><div class="stat-info"><div class="stat-value" id="s-revenue">—</div><div class="stat-label">Revenue</div></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:flex-start">
+        <div class="card">
+          <div class="card-header"><span class="card-title">📅 Today's Appointments</span></div>
+          <div class="card-body">
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Patient</th><th>Doctor</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody id="today-tbody"><tr><td colspan="4" class="text-center text-muted">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">⚡ Quick Actions</span></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-primary" onclick="location.href='appointments.html'">📅 New Appointment</button>
+            <button class="btn btn-success" onclick="location.href='patients.html'">👤 Register Patient</button>
+            <button class="btn btn-warning" onclick="location.href='billing.html'">💰 View Bills</button>
+            <button class="btn btn-outline" onclick="location.href='prescriptions.html'">💊 Prescriptions</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+async function load() {
+  try {
+    const r = await api.getDashboard();
+    if (r && r.data) {
+      const d = r.data;
+      document.getElementById('s-patients').textContent   = d.totalPatients;
+      document.getElementById('s-doctors').textContent    = d.totalDoctors;
+      document.getElementById('s-appointments').textContent = d.totalAppointments;
+      document.getElementById('s-today').textContent      = d.todayAppointments;
+      document.getElementById('s-pending').textContent    = d.pendingAppointments;
+      document.getElementById('s-completed').textContent  = d.completedAppointments;
+      document.getElementById('s-cancelled').textContent  = d.cancelledAppointments;
+      document.getElementById('s-revenue').textContent    = formatCurrency(d.totalRevenue);
+    }
+  } catch(e) { showToast('Failed to load stats','error'); }
+
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const r2 = await api.getAppointmentsByDate(today);
+    const rows = (r2 && r2.data) ? r2.data : [];
+    const tbody = document.getElementById('today-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No appointments today</td></tr>';
+    } else {
+      tbody.innerHTML = rows.slice(0,10).map(a => `
+        <tr>
+          <td>${escHtml(a.patientName)}</td>
+          <td>${escHtml(a.doctorName)}</td>
+          <td>${escHtml(a.appointmentTime)}</td>
+          <td>${badgeHtml(a.status)}</td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+}
+load();
+</script>
+</body>
+</html>

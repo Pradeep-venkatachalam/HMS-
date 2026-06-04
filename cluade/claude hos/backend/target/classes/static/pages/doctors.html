@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Doctors</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name"></div><div class="user-role" id="sidebar-user-role"></div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">🩺 Doctors</div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search doctors…"/>
+      </div>
+      <button class="btn btn-primary" id="addBtn" onclick="openAdd()">+ Add Doctor</button>
+    </header>
+    <main class="page-content">
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Name</th><th>Specialization</th><th>Qualification</th><th>Fee</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="doctors-tbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding:40px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="doctorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Add Doctor</span>
+      <button class="modal-close" onclick="closeModal('doctorModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="doctorId"/>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">First Name *</label><input type="text" id="firstName" class="form-control" placeholder="First name"/></div>
+        <div class="form-group"><label class="form-label">Last Name *</label><input type="text" id="lastName" class="form-control" placeholder="Last name"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Specialization *</label><input type="text" id="specialization" class="form-control" placeholder="e.g. Cardiology"/></div>
+        <div class="form-group"><label class="form-label">Qualification</label><input type="text" id="qualification" class="form-control" placeholder="e.g. MBBS, MD"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">License No.</label><input type="text" id="licenseNumber" class="form-control" placeholder="License number"/></div>
+        <div class="form-group"><label class="form-label">Consultation Fee (₹)</label><input type="number" id="consultationFee" class="form-control" placeholder="500"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Email</label><input type="email" id="demail" class="form-control" placeholder="Email"/></div>
+        <div class="form-group"><label class="form-label">Phone</label><input type="text" id="phone" class="form-control" placeholder="Phone"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Available Days</label><input type="text" id="availableDays" class="form-control" placeholder="Mon-Fri"/></div>
+        <div class="form-group"><label class="form-label">Available Hours</label>
+          <div style="display:flex;gap:8px">
+            <input type="time" id="timeStart" class="form-control"/>
+            <input type="time" id="timeEnd"   class="form-control"/>
+          </div>
+        </div>
+      </div>
+      <div id="loginSection">
+        <div class="divider"></div>
+        <p class="text-muted" style="margin-bottom:12px">Optional: create login credentials for doctor portal</p>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Username</label><input type="text" id="dusername" class="form-control" placeholder="Username"/></div>
+          <div class="form-group"><label class="form-label">Password</label><input type="password" id="dpassword" class="form-control" placeholder="Password"/></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('doctorModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveDoctor()">Save Doctor</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Doctor Details</span><button class="modal-close" onclick="closeModal('viewModal')">✕</button></div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('viewModal')">Close</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+
+if (!api.hasRole('ADMIN','RECEPTIONIST')) {
+  document.getElementById('addBtn').style.display = 'none';
+}
+
+let allDoctors = [];
+
+async function loadDoctors() {
+  try {
+    const r = await api.getDoctors();
+    allDoctors = (r && r.data) ? r.data : [];
+    renderTable(allDoctors);
+  } catch(e) { showToast('Failed to load doctors: '+e.message,'error'); }
+}
+
+function renderTable(doctors) {
+  const tbody = document.getElementById('doctors-tbody');
+  if (!doctors.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🩺</div><h3>No doctors found</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = doctors.map((d,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><strong>${escHtml(d.fullName)}</strong></td>
+      <td>${escHtml(d.specialization)}</td>
+      <td>${escHtml(d.qualification)||'—'}</td>
+      <td>${d.consultationFee ? formatCurrency(d.consultationFee) : '—'}</td>
+      <td>${escHtml(d.phone)||'—'}</td>
+      <td>${badgeHtml(d.active ? 'ACTIVE' : 'INACTIVE')}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn btn-outline btn-sm btn-icon" onclick="viewDoctor(${d.id})" title="View">👁</button>
+          ${api.hasRole('ADMIN') ? `<button class="btn btn-primary btn-sm btn-icon" onclick="openEdit(${d.id})" title="Edit">✏️</button>` : ''}
+          ${api.hasRole('ADMIN') ? `<button class="btn btn-danger btn-sm btn-icon" onclick="deleteDoctor(${d.id})" title="Deactivate">🗑</button>` : ''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', async function() {
+  const q = this.value.trim();
+  if (!q) { renderTable(allDoctors); return; }
+  try { const r = await api.searchDoctors(q); renderTable((r&&r.data)?r.data:[]); } catch(e) {}
+});
+
+function openAdd() {
+  document.getElementById('doctorId').value = '';
+  document.getElementById('modalTitle').textContent = 'Add Doctor';
+  ['firstName','lastName','specialization','qualification','licenseNumber','consultationFee','demail','phone','availableDays','timeStart','timeEnd','dusername','dpassword'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('loginSection').style.display = 'block';
+  openModal('doctorModal');
+}
+
+async function openEdit(id) {
+  try {
+    const r = await api.getDoctor(id);
+    if (!r||!r.data) return;
+    const d = r.data;
+    document.getElementById('doctorId').value = d.id;
+    document.getElementById('modalTitle').textContent = 'Edit Doctor';
+    document.getElementById('firstName').value       = d.firstName||'';
+    document.getElementById('lastName').value        = d.lastName||'';
+    document.getElementById('specialization').value  = d.specialization||'';
+    document.getElementById('qualification').value   = d.qualification||'';
+    document.getElementById('licenseNumber').value   = d.licenseNumber||'';
+    document.getElementById('consultationFee').value = d.consultationFee||'';
+    document.getElementById('demail').value          = d.email||'';
+    document.getElementById('phone').value           = d.phone||'';
+    document.getElementById('availableDays').value   = d.availableDays||'';
+    document.getElementById('timeStart').value       = d.availableTimeStart||'';
+    document.getElementById('timeEnd').value         = d.availableTimeEnd||'';
+    document.getElementById('loginSection').style.display = 'none';
+    openModal('doctorModal');
+  } catch(e) { showToast('Failed to load doctor','error'); }
+}
+
+async function saveDoctor() {
+  const id = document.getElementById('doctorId').value;
+  const data = {
+    firstName: document.getElementById('firstName').value.trim(),
+    lastName:  document.getElementById('lastName').value.trim(),
+    specialization: document.getElementById('specialization').value.trim(),
+    qualification:  document.getElementById('qualification').value.trim(),
+    licenseNumber:  document.getElementById('licenseNumber').value.trim(),
+    consultationFee: parseFloat(document.getElementById('consultationFee').value)||null,
+    email:          document.getElementById('demail').value.trim(),
+    phone:          document.getElementById('phone').value.trim(),
+    availableDays:  document.getElementById('availableDays').value.trim(),
+    availableTimeStart: document.getElementById('timeStart').value||null,
+    availableTimeEnd:   document.getElementById('timeEnd').value||null,
+  };
+  if (!id) {
+    data.username = document.getElementById('dusername').value.trim()||null;
+    data.password = document.getElementById('dpassword').value||null;
+  }
+  if (!data.firstName||!data.lastName||!data.specialization) { showToast('Name and specialization required','warning'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (id) { await api.updateDoctor(id, data); showToast('Doctor updated','success'); }
+    else     { await api.createDoctor(data);     showToast('Doctor added','success'); }
+    closeModal('doctorModal');
+    loadDoctors();
+  } catch(e) { showToast(e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Save Doctor'; }
+}
+
+async function viewDoctor(id) {
+  try {
+    const r = await api.getDoctor(id);
+    if (!r||!r.data) return;
+    const d = r.data;
+    document.getElementById('viewBody').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item"><label>Full Name</label><span>${escHtml(d.fullName)}</span></div>
+        <div class="detail-item"><label>Specialization</label><span>${escHtml(d.specialization)}</span></div>
+        <div class="detail-item"><label>Qualification</label><span>${d.qualification||'—'}</span></div>
+        <div class="detail-item"><label>License No.</label><span>${d.licenseNumber||'—'}</span></div>
+        <div class="detail-item"><label>Email</label><span>${d.email||'—'}</span></div>
+        <div class="detail-item"><label>Phone</label><span>${d.phone||'—'}</span></div>
+        <div class="detail-item"><label>Consultation Fee</label><span>${d.consultationFee ? formatCurrency(d.consultationFee) : '—'}</span></div>
+        <div class="detail-item"><label>Available Days</label><span>${d.availableDays||'—'}</span></div>
+        <div class="detail-item"><label>Hours</label><span>${d.availableTimeStart||'—'} – ${d.availableTimeEnd||'—'}</span></div>
+        <div class="detail-item"><label>Status</label><span>${badgeHtml(d.active?'ACTIVE':'INACTIVE')}</span></div>
+      </div>`;
+    openModal('viewModal');
+  } catch(e) { showToast('Failed to load doctor','error'); }
+}
+
+async function deleteDoctor(id) {
+  if (!confirm('Deactivate this doctor?')) return;
+  try { await api.deleteDoctor(id); showToast('Doctor deactivated','success'); loadDoctors(); }
+  catch(e) { showToast(e.message,'error'); }
+}
+
+loadDoctors();
+</script>
+</body>
+</html>

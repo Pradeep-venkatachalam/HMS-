@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HMS – Billing</title>
+<link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🏥</div><span>HMS</span></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item" data-page="dashboard"><span class="nav-icon">📊</span>Dashboard</div>
+      <div class="nav-section-title">Management</div>
+      <div class="nav-item" data-page="patients"      data-roles="ADMIN,DOCTOR,RECEPTIONIST"><span class="nav-icon">👤</span>Patients</div>
+      <div class="nav-item" data-page="doctors"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">🩺</span>Doctors</div>
+      <div class="nav-item" data-page="appointments"><span class="nav-icon">📅</span>Appointments</div>
+      <div class="nav-item" data-page="prescriptions"><span class="nav-icon">💊</span>Prescriptions</div>
+      <div class="nav-item" data-page="billing"       data-roles="ADMIN,RECEPTIONIST"><span class="nav-icon">💰</span>Billing</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-user-avatar">A</div>
+        <div><div class="user-name" id="sidebar-user-name"></div><div class="user-role" id="sidebar-user-role"></div></div>
+      </div>
+      <button class="btn-logout" id="logout-btn">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">💰 Billing</div>
+      <select id="statusFilter" class="form-control" style="width:160px">
+        <option value="">All Bills</option>
+        <option value="PENDING">Pending</option>
+        <option value="PAID">Paid</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAdd()">+ Create Bill</button>
+    </header>
+    <main class="page-content">
+
+      <!-- Summary row -->
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon green">💰</div><div class="stat-info"><div class="stat-value" id="total-bills">—</div><div class="stat-label">Total Bills</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div class="stat-info"><div class="stat-value" id="pending-bills">—</div><div class="stat-label">Pending</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-value" id="paid-bills">—</div><div class="stat-label">Paid</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>#</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Total</th><th>Paid</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody id="bills-tbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding:40px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- CREATE BILL MODAL -->
+<div class="modal-overlay" id="billModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Create Bill</span>
+      <button class="modal-close" onclick="closeModal('billModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="billId"/>
+      <div class="form-group">
+        <label class="form-label">Appointment *</label>
+        <select id="aptSelect" class="form-control"></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Consultation Fee (₹)</label><input type="number" id="consultFee" class="form-control" placeholder="0.00" oninput="calcTotal()"/></div>
+        <div class="form-group"><label class="form-label">Medicine Charge (₹)</label><input type="number" id="medCharge" class="form-control" placeholder="0.00" oninput="calcTotal()"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Test Charge (₹)</label><input type="number" id="testCharge" class="form-control" placeholder="0.00" oninput="calcTotal()"/></div>
+        <div class="form-group"><label class="form-label">Other Charge (₹)</label><input type="number" id="otherCharge" class="form-control" placeholder="0.00" oninput="calcTotal()"/></div>
+      </div>
+      <div style="background:#e8f5e9;border-radius:8px;padding:14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;color:#2e7d32">Total Amount</span>
+        <span style="font-size:22px;font-weight:700;color:#1b5e20" id="totalDisplay">₹0.00</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('billModal')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveBill()">Create Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY MODAL -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><span class="modal-title">Record Payment</span><button class="modal-close" onclick="closeModal('payModal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="payBillId"/>
+      <div id="payDetails" style="background:#f5f5f5;border-radius:8px;padding:14px;margin-bottom:16px"></div>
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select id="payMethod" class="form-control">
+          <option value="CASH">Cash</option>
+          <option value="CARD">Card</option>
+          <option value="UPI">UPI</option>
+          <option value="INSURANCE">Insurance</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('payModal')">Cancel</button>
+      <button class="btn btn-success" onclick="confirmPay()">✅ Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Bill Details</span><button class="modal-close" onclick="closeModal('viewModal')">✕</button></div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('viewModal')">Close</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+requireAuth();
+initSidebar();
+
+const urlParams = new URLSearchParams(window.location.search);
+const prefilledAptId = urlParams.get('appointmentId');
+
+let allBills = [];
+
+async function loadAll() {
+  try {
+    const r = await api.getBills();
+    allBills = (r && r.data) ? r.data : [];
+    applyFilter();
+    updateSummary(allBills);
+  } catch(e) { showToast('Failed to load bills: '+e.message,'error'); }
+}
+
+function updateSummary(bills) {
+  document.getElementById('total-bills').textContent   = bills.length;
+  document.getElementById('pending-bills').textContent = bills.filter(b=>b.paymentStatus==='PENDING').length;
+  document.getElementById('paid-bills').textContent    = bills.filter(b=>b.paymentStatus==='PAID').length;
+}
+
+function applyFilter() {
+  const f = document.getElementById('statusFilter').value;
+  const rows = f ? allBills.filter(b=>b.paymentStatus===f) : allBills;
+  renderTable(rows);
+}
+
+document.getElementById('statusFilter').addEventListener('change', applyFilter);
+
+function renderTable(rows) {
+  const tbody = document.getElementById('bills-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">💰</div><h3>No bills found</h3></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((b,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${escHtml(b.patientName)}</td>
+      <td>${escHtml(b.doctorName)}</td>
+      <td>${formatDate(b.appointmentDate)}</td>
+      <td><strong>${formatCurrency(b.totalAmount)}</strong></td>
+      <td>${formatCurrency(b.paidAmount)}</td>
+      <td>${badgeHtml(b.paymentStatus)}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn btn-outline btn-sm btn-icon" onclick="viewBill(${b.id})" title="View">👁</button>
+          ${b.paymentStatus==='PENDING' && api.hasRole('ADMIN','RECEPTIONIST') ?
+            `<button class="btn btn-success btn-sm" onclick="openPay(${b.id})">💳 Pay</button>` : ''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function calcTotal() {
+  const val = id => parseFloat(document.getElementById(id).value)||0;
+  const total = val('consultFee') + val('medCharge') + val('testCharge') + val('otherCharge');
+  document.getElementById('totalDisplay').textContent = formatCurrency(total);
+}
+
+async function loadAptSelect(selectedId) {
+  try {
+    const r = await api.getAppointments();
+    const apts = (r&&r.data)?r.data:[];
+    document.getElementById('aptSelect').innerHTML =
+      '<option value="">Select Appointment</option>' +
+      apts.filter(a=>!a.hasBill).map(a =>
+        `<option value="${a.id}" ${a.id==selectedId?'selected':''}>
+          ${escHtml(a.patientName)} → ${escHtml(a.doctorName)} | ${formatDate(a.appointmentDate)}
+        </option>`).join('');
+  } catch(e) {}
+}
+
+async function openAdd() {
+  document.getElementById('billId').value = '';
+  document.getElementById('modalTitle').textContent = 'Create Bill';
+  ['consultFee','medCharge','testCharge','otherCharge'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('totalDisplay').textContent = '₹0.00';
+  await loadAptSelect(prefilledAptId);
+  openModal('billModal');
+}
+
+async function saveBill() {
+  const data = {
+    appointmentId: parseInt(document.getElementById('aptSelect').value)||null,
+    consultationFee: parseFloat(document.getElementById('consultFee').value)||0,
+    medicineCharge:  parseFloat(document.getElementById('medCharge').value)||0,
+    testCharge:      parseFloat(document.getElementById('testCharge').value)||0,
+    otherCharge:     parseFloat(document.getElementById('otherCharge').value)||0,
+  };
+  if (!data.appointmentId) { showToast('Please select an appointment','warning'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    await api.createBill(data);
+    showToast('Bill created','success');
+    closeModal('billModal');
+    loadAll();
+  } catch(e) { showToast(e.message,'error'); }
+  finally { btn.disabled=false; btn.textContent='Create Bill'; }
+}
+
+function openPay(id) {
+  const b = allBills.find(x=>x.id===id);
+  if (!b) return;
+  document.getElementById('payBillId').value = id;
+  document.getElementById('payDetails').innerHTML = `
+    <p><strong>Patient:</strong> ${escHtml(b.patientName)}</p>
+    <p><strong>Amount Due:</strong> <span style="font-size:18px;font-weight:700;color:#1b5e20">${formatCurrency(b.totalAmount)}</span></p>`;
+  openModal('payModal');
+}
+
+async function confirmPay() {
+  const id = document.getElementById('payBillId').value;
+  const method = document.getElementById('payMethod').value;
+  try {
+    await api.markBillPaid(id, method);
+    showToast('Payment recorded successfully','success');
+    closeModal('payModal');
+    loadAll();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function viewBill(id) {
+  try {
+    const r = await api.getBill(id);
+    if (!r||!r.data) return;
+    const b = r.data;
+    document.getElementById('viewBody').innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-item"><label>Patient</label><span>${escHtml(b.patientName)}</span></div>
+        <div class="detail-item"><label>Doctor</label><span>${escHtml(b.doctorName)}</span></div>
+        <div class="detail-item"><label>Appointment Date</label><span>${formatDate(b.appointmentDate)}</span></div>
+        <div class="detail-item"><label>Status</label><span>${badgeHtml(b.paymentStatus)}</span></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:flex;justify-content:space-between"><span>Consultation Fee</span><strong>${formatCurrency(b.consultationFee)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span>Medicine Charge</span><strong>${formatCurrency(b.medicineCharge)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span>Test Charge</span><strong>${formatCurrency(b.testCharge)}</strong></div>
+        <div style="display:flex;justify-content:space-between"><span>Other Charge</span><strong>${formatCurrency(b.otherCharge)}</strong></div>
+      </div>
+      <div style="background:#e8f5e9;border-radius:8px;padding:14px;margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600">Total Amount</span>
+        <span style="font-size:22px;font-weight:700;color:#1b5e20">${formatCurrency(b.totalAmount)}</span>
+      </div>
+      ${b.paidAt ? `<p class="text-muted mt-2" style="text-align:center">Paid on ${formatDateTime(b.paidAt)} via ${b.paymentMethod}</p>` : ''}`;
+    openModal('viewModal');
+  } catch(e) { showToast('Failed to load bill','error'); }
+}
+
+loadAll();
+if (prefilledAptId) {
+  window.addEventListener('load', () => setTimeout(openAdd, 300));
+}
+</script>
+</body>
+</html>
